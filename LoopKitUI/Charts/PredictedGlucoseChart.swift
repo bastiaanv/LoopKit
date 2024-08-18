@@ -12,6 +12,7 @@ import HealthKit
 import UIKit
 
 public class PredictedGlucoseChart: GlucoseChart, ChartProviding {
+    private let useColoring = true
 
     public private(set) var glucosePoints: [ChartPoint] = [] {
         didSet {
@@ -170,7 +171,41 @@ extension PredictedGlucoseChart {
         // Grid lines
         let gridLayer = ChartGuideLinesForValuesLayer(xAxis: xAxisLayer.axis, yAxis: yAxisLayer.axis, settings: guideLinesLayerSettings, axisValuesX: Array(xAxisValues.dropFirst().dropLast()), axisValuesY: yAxisValues)
 
-        let circles = ChartPointsScatterCirclesLayer(xAxis: xAxisLayer.axis, yAxis: yAxisLayer.axis, chartPoints: glucosePoints, displayDelay: 0, itemSize: CGSize(width: 4, height: 4), itemFillColor: colors.glucoseTint, optimized: true)
+        let circles: [ChartLayer]
+        
+        if useColoring {
+            let goodCircle = ChartPointsScatterCirclesLayer(
+                xAxis: xAxisLayer.axis,
+                yAxis: yAxisLayer.axis,
+                chartPoints: glucosePoints.filter { x in x.y.scalar >= 4 && x.y.scalar <= 10 },
+                displayDelay: 0,
+                itemSize: CGSize(width: 4, height: 4),
+                itemFillColor: .green,
+                optimized: true
+            )
+            let lowCircle = ChartPointsScatterCirclesLayer(
+                xAxis: xAxisLayer.axis,
+                yAxis: yAxisLayer.axis,
+                chartPoints: glucosePoints.filter { x in x.y.scalar < 4 },
+                displayDelay: 0,
+                itemSize: CGSize(width: 4, height: 4),
+                itemFillColor: .red,
+                optimized: true
+            )
+            let highCircle = ChartPointsScatterCirclesLayer(
+                xAxis: xAxisLayer.axis,
+                yAxis: yAxisLayer.axis,
+                chartPoints: glucosePoints.filter { x in x.y.scalar > 10 },
+                displayDelay: 0,
+                itemSize: CGSize(width: 4, height: 4),
+                itemFillColor: .orange,
+                optimized: true
+            )
+            circles = [goodCircle, lowCircle, highCircle]
+        } else {
+            let circle = ChartPointsScatterCirclesLayer(xAxis: xAxisLayer.axis, yAxis: yAxisLayer.axis, chartPoints: glucosePoints, displayDelay: 0, itemSize: CGSize(width: 4, height: 4), itemFillColor: colors.glucoseTint, optimized: true)
+            circles = [circle]
+        }
 
         var alternatePrediction: ChartLayer?
 
@@ -214,8 +249,7 @@ extension PredictedGlucoseChart {
             glucoseChartCache?.highlightLayer,
             prediction,
             alternatePrediction,
-            circles
-        ]
+        ] + circles
 
         return Chart(
             frame: frame,
